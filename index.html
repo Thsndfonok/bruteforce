@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="hu">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>BruteForce XX — Discord</title>
+  <meta name="description" content="BruteForce XX — fekete-fehér, animált Discord landing oldal" />
+  <style>
+    :root{ --bg:#0b0b0b; --fg:#f5f5f5; --accent:#ffffff; --muted:#b8b8b8; }
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body,#app{height:100%}
+    body{font-family:Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; background:var(--bg); color:var(--fg); -webkit-font-smoothing:antialiased}
+    #particle-canvas{position:fixed;inset:0;z-index:0;mix-blend-mode:screen;opacity:0.12}
+
+    .wrap{position:relative;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:48px;z-index:1}
+    .container{width:1200px;max-width:100%;display:grid;grid-template-columns:1.1fr 420px;gap:36px;align-items:start}
+
+    .hero{padding:36px;border-radius:18px;background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.02));box-shadow:0 6px 30px rgba(0,0,0,0.6);backdrop-filter: blur(6px);position:relative}
+    .logo{display:flex;align-items:center;gap:18px}
+    .badge{width:84px;height:84px;border-radius:14px;display:grid;place-items:center;background:#000;border:1px solid rgba(255,255,255,0.06);box-shadow:0 4px 18px rgba(0,0,0,0.6)}
+    .badge svg{width:56px;height:56px;filter:drop-shadow(0 2px 6px rgba(0,0,0,0.8))}
+    .title{font-size:38px;letter-spacing:2px;text-transform:uppercase;line-height:1}
+    .subtitle{color:var(--muted);margin-top:10px;font-size:14px}
+    .hero:after{content:"";position:absolute;inset:0;border-radius:18px;pointer-events:none;background:linear-gradient(180deg, rgba(255,255,255,.02), transparent 30%);mix-blend-mode:overlay}
+
+    .glitch{position:relative;display:inline-block}
+    .glitch::before,.glitch::after{content:attr(data-text);position:absolute;left:0;top:0;width:100%;overflow:hidden}
+    .glitch::before{clip-path:inset(0 0 66% 0);transform:translate(2px,-2px);opacity:.8}
+    .glitch::after{clip-path:inset(66% 0 0 0);transform:translate(-2px,2px);opacity:.6}
+
+    .actions{display:flex;gap:16px;margin-top:26px;align-items:center}
+    .btn{padding:14px 20px;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:transparent;color:var(--fg);cursor:pointer;font-weight:600}
+    .btn.join{background:linear-gradient(90deg, rgba(255,255,255,.06), rgba(255,255,255,.02));box-shadow:0 8px 26px rgba(0,0,0,.6)}
+    .btn.ghost{color:var(--muted);font-weight:500}
+
+    .desc{margin-top:18px;color:var(--muted);line-height:1.6}
+
+    .sidebar{display:flex;flex-direction:column;gap:18px}
+    .card{background:linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.01));padding:18px;border-radius:14px;border:1px solid rgba(255,255,255,.03);box-shadow:0 10px 30px rgba(0,0,0,.6);display:flex;gap:14px;align-items:center}
+    .lanyard{display:flex;gap:12px;align-items:center}
+    .avatar{position:relative;width:72px;height:72px;border-radius:12px;display:grid;place-items:center;background:#111;border:1px solid rgba(255,255,255,.04);overflow:hidden}
+    .avatar img{width:100%;height:100%;object-fit:cover;display:block}
+    .status-dot{position:absolute;right:6px;bottom:6px;width:12px;height:12px;border-radius:50%;border:2px solid #0b0b0b;background:#9a9a9a}
+    .status-online{background:#ffffff}
+    .meta{display:flex;flex-direction:column}
+    .name{font-weight:700;letter-spacing:.6px}
+    .role{font-size:13px;color:var(--muted);margin-top:6px}
+
+    .idstrip{height:8px;margin-top:10px;border-radius:6px;background:repeating-linear-gradient(90deg, rgba(255,255,255,.02) 0 8px, rgba(255,255,255,0) 8px 16px);animation:move 6s linear infinite}
+    @keyframes move{0%{background-position:0 0}100%{background-position:200px 0}}
+
+    footer{margin-top:28px;color:var(--muted);font-size:13px}
+
+    @media (max-width:980px){.container{grid-template-columns:1fr}.sidebar{flex-direction:row;overflow:auto;padding-bottom:8px}.card{min-width:320px}}
+
+    .spark{display:inline-block;width:8px;height:8px;border-radius:50%;background:linear-gradient(180deg,#fff,#ddd);opacity:.12;margin-left:8px;animation:blink 2.2s infinite}
+    @keyframes blink{0%,60%{opacity:.12}70%{opacity:.28}100%{opacity:.12}}
+    .card:hover{transform:translateY(-6px);transition:transform .28s cubic-bezier(.2,.9,.2,1)}
+  </style>
+</head>
+<body>
+  <canvas id="particle-canvas"></canvas>
+
+  <div class="wrap" id="app">
+    <div class="container">
+      <main class="hero" role="main">
+        <div class="logo">
+          <div class="badge" aria-hidden="true">
+            <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <rect x="6" y="6" width="88" height="88" rx="12" fill="#000" stroke="#fff" stroke-opacity=".06"/>
+              <text x="50" y="60" text-anchor="middle" font-family="monospace" font-size="42" fill="#fff" font-weight="700">BF</text>
+            </svg>
+          </div>
+          <div>
+            <div class="title glitch" data-text="BRUTEFORCE XX">BRUTEFORCE XX <span class="spark"></span></div>
+            <div class="subtitle">Created by thsnd.</div>
+          </div>
+        </div>
+
+        <p class="desc">Üdv a <strong>BruteForce XX</strong> közösségben — itt a tech, a game, a memek és a late-night coding találkozik. Csatlakozz, nézz körül, szerezz rangokat, és találj csapattársakat.</p>
+
+        <div class="actions">
+          <!-- Linket be lehet állítani a SCRIPT tetején -->
+          <a class="btn join" id="joinBtn" href="#" aria-label="Join BruteForce XX Discord">Join Discord</a>
+          <button class="btn ghost" id="rulesBtn">Szabályok</button>
+          <a class="btn" id="inviteCopy">Link másolása</a>
+        </div>
+
+        <footer>
+          <div>Design &amp; 2025 • BruteForce XX.</div>
+        </footer>
+      </main>
+
+      <aside class="sidebar" aria-label="Staff & lanyards">
+        <!-- Lanyard 1: cseréld a data-user-id értéket valós Discord ID-ra -->
+        <article class="card lanyard-card" data-user-id="343435658783883277">
+          <div class="lanyard">
+            <div class="avatar">
+              <img alt="Profilkép" src=""/>
+              <span class="status-dot"></span>
+            </div>
+            <div class="meta">
+              <div class="name">NightRazor</div>
+              <div class="role">Admin • Founding</div>
+              <div class="role" style="margin-top:8px;font-size:12px;color:var(--muted)">Discord: <span class="tag">—</span></div>
+              <div class="idstrip" style="width:140px"></div>
+            </div>
+          </div>
+        </article>
+
+        <!-- Lanyard 2: cseréld a data-user-id értéket valós Discord ID-ra -->
+        <article class="card lanyard-card" data-user-id="988478515047440444">
+          <div class="lanyard">
+            <div class="avatar">
+              <img alt="Profilkép" src=""/>
+              <span class="status-dot"></span>
+            </div>
+            <div class="meta">
+              <div class="name">EchoByte</div>
+              <div class="role">Moderator</div>
+              <div class="role" style="margin-top:8px;font-size:12px;color:var(--muted)">Discord: <span class="tag">—</span></div>
+              <div class="idstrip" style="width:120px"></div>
+            </div>
+          </div>
+        </article>
+
+        <article class="card" style="justify-content:center;min-height:72px;align-items:center">
+          <div style="text-align:center">
+            <div style="font-weight:700">Server Stats</div>
+            <div style="color:var(--muted);margin-top:6px">Uptime, bots, rank system</div>
+          </div>
+        </article>
+      </aside>
+
+    </div>
+  </div>
+
+  <script>
+    // ===== CONFIG (IDE ÍRD A SAJÁT MEGHÍVÓDAT HA KELL) =====
+    // Ha nem akarod használni, hagyd a változót üresen vagy a default helyőrzőt.
+    const INVITE = 'https://discord.gg/bruteforce';
+
+    // ===== Particle background =====
+    (function(){
+      const canvas = document.getElementById('particle-canvas');
+      const ctx = canvas.getContext('2d');
+      let w = canvas.width = innerWidth;
+      let h = canvas.height = innerHeight;
+      const P = 70, particles = [];
+      const rnd = (a,b)=>Math.random()*(b-a)+a;
+      for(let i=0;i<P;i++) particles.push({x:rnd(0,w),y:rnd(0,h),v:rnd(.1,.6),r:rnd(.6,2.2)});
+      addEventListener('resize', ()=>{ w=canvas.width=innerWidth; h=canvas.height=innerHeight; });
+      (function draw(){
+        ctx.clearRect(0,0,w,h); ctx.globalCompositeOperation='lighter';
+        for(const p of particles){
+          p.x += p.v*Math.sin((Date.now()+p.x)/5000); p.y += p.v/2;
+          if(p.y>h+20){ p.y=-20; p.x=rnd(0,w); }
+          ctx.beginPath(); ctx.fillStyle='rgba(255,255,255,'+(0.05+p.r/6)+')';
+          ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill();
+        }
+        requestAnimationFrame(draw);
+      })();
+    })();
+
+    // ===== Join button + copy =====
+    document.getElementById('joinBtn').setAttribute('href', INVITE);
+    document.getElementById('inviteCopy').addEventListener('click', async ()=>{
+      try{
+        await navigator.clipboard.writeText(INVITE);
+        const el = document.getElementById('inviteCopy');
+        el.textContent = 'Másolva!';
+        setTimeout(()=>el.textContent='Link másolása',2000);
+      }catch(e){
+        alert('A böngésződ nem engedélyezi a vágólapot.');
+      }
+    });
+
+    // ===== Rules (simple) =====
+    document.getElementById('rulesBtn').addEventListener('click', ()=>{
+      alert('Szabályok:\n\n1) Legyél tiszteletteljes.\n2) Ne spammelj.\n3) Kövesd a staff utasításait.\n4) Tiltott a csalás és kártékony kód.\n\n(Ezek példa szabályok — cseréld a sajátjaidra.)');
+    });
+
+    // tiny glitch
+    setInterval(()=>{
+      const g = document.querySelector('.glitch');
+      if(!g) return;
+      g.style.transform = 'translateX('+(Math.random()*6-3)+'px)';
+      g.style.opacity = (0.92+Math.random()*0.08);
+    }, 420);
+
+    // ===== Lanyard (profilek frissítése ID alapján) =====
+    async function fetchLanyard(userId){
+      const res = await fetch(`https://api.lanyard.rest/v1/users/${userId}`);
+      if(!res.ok) throw new Error('Lanyard fetch failed');
+      const j = await res.json(); return j.data;
+    }
+    function avatarUrlFrom(user){
+      const id = user.discord_user.id;
+      const avatar = user.discord_user.avatar;
+      return avatar ? `https://cdn.discordapp.com/avatars/${id}/${avatar}.png?size=128` : '';
+    }
+    async function updateLanyardCards(){
+      const cards = document.querySelectorAll('.lanyard-card');
+      for(const card of cards){
+        const userId = card.getAttribute('data-user-id');
+        if(!userId || /0{6,}/.test(userId)) continue; // placeholder esetén skip
+        try{
+          const data = await fetchLanyard(userId);
+          const img = card.querySelector('img');
+          const nameEl = card.querySelector('.name');
+          const tagEl = card.querySelector('.tag');
+          const dot = card.querySelector('.status-dot');
+
+          const url = avatarUrlFrom(data);
+          if(url && img) img.src = url;
+
+          const username = data.discord_user.global_name || data.discord_user.username || 'Ismeretlen';
+          if(nameEl) nameEl.textContent = username;
+
+          if(tagEl){
+            const discr = (data.discord_user.discriminator && data.discord_user.discriminator !== '0') ? '#'+data.discord_user.discriminator : '';
+            tagEl.textContent = (data.discord_user.username || username) + discr;
+          }
+
+          const online = data.discord_status && data.discord_status !== 'offline';
+          if(dot) dot.classList.toggle('status-online', !!online);
+        }catch(e){
+          // ha hiba van, maradnak a kézi adatok
+        }
+      }
+    }
+    updateLanyardCards();
+    setInterval(updateLanyardCards, 60000);
+  </script>
+</body>
+</html>
