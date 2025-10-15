@@ -9,7 +9,7 @@
     :root{ --bg:#0b0b0b; --fg:#f5f5f5; --accent:#ffffff; --muted:#b8b8b8; }
     *{box-sizing:border-box;margin:0;padding:0}
     html,body,#app{height:100%}
-    body{font-family:Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; background:var(--bg); color:var(--fg); -webkit-font-smoothing:antialiased}
+    body{font-family:Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; background:var(--bg); color:var(--fg); -webkit-font-smoothing:antialiased; overflow:hidden}
     #particle-canvas{position:fixed;inset:0;z-index:0;mix-blend-mode:screen;opacity:0.12}
 
     .wrap{position:relative;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:48px;z-index:1}
@@ -56,12 +56,82 @@
     .spark{display:inline-block;width:8px;height:8px;border-radius:50%;background:linear-gradient(180deg,#fff,#ddd);opacity:.12;margin-left:8px;animation:blink 2.2s infinite}
     @keyframes blink{0%,60%{opacity:.12}70%{opacity:.28}100%{opacity:.12}}
     .card:hover{transform:translateY(-6px);transition:transform .28s cubic-bezier(.2,.9,.2,1)}
+
+    /* --- Audio controls (top-left) --- */
+    .audio-controls {
+      position:fixed; top:18px; left:18px; z-index:9999;
+      display:flex; align-items:center; gap:10px;
+      background:rgba(0,0,0,0.36); padding:8px 10px; border-radius:12px;
+      border:1px solid rgba(255,255,255,0.04); backdrop-filter: blur(6px);
+      box-shadow:0 6px 20px rgba(0,0,0,0.6);
+    }
+    .audio-btn { width:40px; height:40px; display:grid; place-items:center; border-radius:10px; background:transparent; border:1px solid rgba(255,255,255,0.06); cursor:pointer; }
+    .audio-btn:active { transform:translateY(1px); }
+    .volume-slider { width:130px; -webkit-appearance:none; height:6px; background:rgba(255,255,255,0.06); border-radius:6px; outline:none; }
+    .volume-slider::-webkit-slider-thumb { -webkit-appearance:none; width:14px; height:14px; border-radius:50%; background:#fff; box-shadow:0 2px 6px rgba(0,0,0,0.6); }
+    .sr-only { position:absolute!important; width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0; }
+
+    /* --- ENTER gate overlay --- */
+    .gate {
+      position:fixed; inset:0; z-index:10000;
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      background: radial-gradient(1200px 1200px at 50% 50%, rgba(255,255,255,0.06), rgba(0,0,0,0.82)), var(--bg);
+      color:var(--fg);
+      border-bottom:1px solid rgba(255,255,255,.04);
+      overflow:hidden;
+    }
+    .gate__inner { text-align:center; transform:translateY(10px); opacity:0; animation:gateIn .8s ease-out forwards .15s; }
+    .gate__logo { font-size:48px; letter-spacing:4px; text-transform:uppercase; margin-bottom:16px; }
+    .gate__sub { color:var(--muted); margin-bottom:26px; }
+    .gate__btn {
+      padding:14px 28px; border-radius:14px; font-weight:700; letter-spacing:.8px;
+      border:1px solid rgba(255,255,255,.1); background:linear-gradient(90deg, rgba(255,255,255,.12), rgba(255,255,255,.04));
+      cursor:pointer; box-shadow:0 12px 40px rgba(0,0,0,.6);
+      transition: transform .18s ease, box-shadow .18s ease, opacity .2s ease;
+    }
+    .gate__btn:hover { transform:translateY(-2px); box-shadow:0 16px 48px rgba(0,0,0,.7); }
+    .gate__hint { margin-top:12px; font-size:12px; color:var(--muted); }
+
+    .gate--closing { animation: gateOut .6s cubic-bezier(.2,.9,.2,1) forwards; }
+    @keyframes gateIn { from { opacity:0; transform:translateY(10px);} to { opacity:1; transform:translateY(0);} }
+    @keyframes gateOut {
+      0% { opacity:1; transform:translateY(0); }
+      100% { opacity:0; transform:translateY(-18px); }
+    }
   </style>
 </head>
 <body>
   <canvas id="particle-canvas"></canvas>
 
-  <div class="wrap" id="app">
+  <!-- ===== Audio element (keresi a gyökér mappában lévő music.mp3 fájlt) ===== -->
+  <audio id="bgAudio" loop autoplay muted preload="auto">
+    <source src="music.mp3" type="audio/mpeg">
+    A böngésződ nem támogatja az audio elemet.
+  </audio>
+
+  <!-- ===== Top-left audio controls ===== -->
+  <div class="audio-controls" aria-hidden="false">
+    <button id="muteBtn" class="audio-btn" aria-pressed="true" aria-label="Hang némítva / némítás feloldása">
+      <svg id="muteIcon" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M16 7L12 11H8C7.44772 11 7 11.4477 7 12V12C7 12.5523 7.44772 13 8 13H12L16 17V7Z" stroke="#fff" stroke-opacity="0.95" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+        <line x1="19" y1="5" x2="5" y2="19" stroke="#fff" stroke-opacity="0.95" stroke-width="1.6" stroke-linecap="round"/>
+      </svg>
+    </button>
+    <input id="volumeSlider" class="volume-slider" type="range" min="0" max="100" value="50" aria-label="Hangerő" />
+    <span class="sr-only" id="volumeLabel">Hangerő: 50%</span>
+  </div>
+
+  <!-- ===== ENTER gate ===== -->
+  <div id="gate" class="gate" role="dialog" aria-labelledby="gateTitle" aria-describedby="gateDesc" aria-modal="true">
+    <div class="gate__inner">
+      <div id="gateTitle" class="gate__logo">BRUTEFORCE XX</div>
+      <div id="gateDesc" class="gate__sub">Készen állsz? Lépj be a szerver landingre.</div>
+      <button id="enterBtn" class="gate__btn" autofocus>ENTER</button>
+      <div class="gate__hint">A belépéssel elindulhat a háttérzene.</div>
+    </div>
+  </div>
+
+  <div class="wrap" id="app" tabindex="-1">
     <div class="container">
       <main class="hero" role="main">
         <div class="logo">
@@ -80,7 +150,6 @@
         <p class="desc">Üdv a <strong>BruteForce XX</strong> közösségben — a game, a memek és a giveaway-ekkel tudsz találkozni. Csatlakozz, nézz körül, szerezz rangokat, és érezd jól magad.</p>
 
         <div class="actions">
-          <!-- Linket be lehet állítani a SCRIPT tetején -->
           <a class="btn join" id="joinBtn" href="#" aria-label="Join BruteForce XX Discord">Join Discord</a>
           <button class="btn ghost" id="rulesBtn">Szabályok</button>
           <a class="btn" id="inviteCopy">Link másolása</a>
@@ -92,7 +161,6 @@
       </main>
 
       <aside class="sidebar" aria-label="Staff & lanyards">
-        <!-- Lanyard 1: cseréld a data-user-id értéket valós Discord ID-ra -->
         <article class="card lanyard-card" data-user-id="343435658783883277">
           <div class="lanyard">
             <div class="avatar">
@@ -108,7 +176,6 @@
           </div>
         </article>
 
-        <!-- Lanyard 2: cseréld a data-user-id értéket valós Discord ID-ra -->
         <article class="card lanyard-card" data-user-id="988478515047440444">
           <div class="lanyard">
             <div class="avatar">
@@ -136,8 +203,7 @@
   </div>
 
   <script>
-    // ===== CONFIG (IDE ÍRD A SAJÁT MEGHÍVÓDAT HA KELL) =====
-    // Ha nem akarod használni, hagyd a változót üresen vagy a default helyőrzőt.
+    // ===== CONFIG =====
     const INVITE = 'https://discord.gg/bruteforce';
 
     // ===== Particle background =====
@@ -177,9 +243,8 @@
 
     // ===== Rules (simple) =====
     document.getElementById('rulesBtn').addEventListener('click', () => {
-  alert('Szabályok:\n\n1) Legyél tiszteletteljes.\n2) Ne spammelj.\n3) Kövesd a staff utasításait.');
-});
-
+      alert('Szabályok:\n\n1) Legyél tiszteletteljes.\n2) Ne spammelj.\n3) Kövesd a staff utasításait.');
+    });
 
     // tiny glitch
     setInterval(()=>{
@@ -189,7 +254,7 @@
       g.style.opacity = (0.92+Math.random()*0.08);
     }, 420);
 
-    // ===== Lanyard (profilek frissítése ID alapján) =====
+    // ===== Lanyard =====
     async function fetchLanyard(userId){
       const res = await fetch(`https://api.lanyard.rest/v1/users/${userId}`);
       if(!res.ok) throw new Error('Lanyard fetch failed');
@@ -204,7 +269,7 @@
       const cards = document.querySelectorAll('.lanyard-card');
       for(const card of cards){
         const userId = card.getAttribute('data-user-id');
-        if(!userId || /0{6,}/.test(userId)) continue; // placeholder esetén skip
+        if(!userId || /0{6,}/.test(userId)) continue;
         try{
           const data = await fetchLanyard(userId);
           const img = card.querySelector('img');
@@ -226,12 +291,93 @@
           const online = data.discord_status && data.discord_status !== 'offline';
           if(dot) dot.classList.toggle('status-online', !!online);
         }catch(e){
-          // ha hiba van, maradnak a kézi adatok
+          // maradnak a kézi adatok
         }
       }
     }
     updateLanyardCards();
     setInterval(updateLanyardCards, 60000);
+
+    // ===== Audio UI behaviour =====
+    (function(){
+      const audio = document.getElementById('bgAudio');
+      const muteBtn = document.getElementById('muteBtn');
+      const muteIcon = document.getElementById('muteIcon');
+      const slider = document.getElementById('volumeSlider');
+      const volumeLabel = document.getElementById('volumeLabel');
+
+      audio.volume = 0.5;
+      slider.value = Math.round(audio.volume * 100);
+      volumeLabel.textContent = `Hangerő: ${slider.value}%`;
+
+      function setIcon(muted, vol) {
+        const isMuted = muted || vol === 0;
+        if(isMuted){
+          muteBtn.setAttribute('aria-pressed','true');
+          muteIcon.innerHTML = '<path d="M16 7L12 11H8C7.44772 11 7 11.4477 7 12V12C7 12.5523 7.44772 13 8 13H12L16 17V7Z" stroke="#fff" stroke-opacity="0.95" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><line x1="19" y1="5" x2="5" y2="19" stroke="#fff" stroke-opacity="0.95" stroke-width="1.6" stroke-linecap="round"/>';
+        } else {
+          muteBtn.setAttribute('aria-pressed','false');
+          muteIcon.innerHTML = '<path d="M5 12h3l4-4v10l-4-4H5z" stroke="#fff" stroke-opacity="0.95" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M16.5 8.5a4.5 4.5 0 010 7" stroke="#fff" stroke-opacity="0.95" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>';
+        }
+      }
+      function tryPlay() {
+        const p = audio.play();
+        if (p) p.catch(()=>{});
+      }
+
+      muteBtn.addEventListener('click', async () => {
+        try { await audio.play(); } catch(e) {}
+        audio.muted = !audio.muted;
+        setIcon(audio.muted, audio.volume);
+      });
+
+      slider.addEventListener('input', (e) => {
+        const v = Number(e.target.value);
+        audio.volume = v / 100;
+        volumeLabel.textContent = `Hangerő: ${v}%`;
+        if (v > 0 && audio.muted) audio.muted = false;
+        if (v === 0 && !audio.muted) audio.muted = true;
+        setIcon(audio.muted, audio.volume);
+        tryPlay();
+      });
+
+      audio.addEventListener('volumechange', ()=> setIcon(audio.muted, audio.volume));
+    })();
+
+    // ===== ENTER gate behavior =====
+    (function(){
+      const gate = document.getElementById('gate');
+      const enterBtn = document.getElementById('enterBtn');
+      const app = document.getElementById('app');
+      const audio = document.getElementById('bgAudio');
+
+      function closeGate(){
+        // indítsuk el a zenét user gesture-rel
+        audio.muted = false;
+        audio.volume = audio.volume || 0.5;
+        audio.play().catch(()=>{}); // ha mégsem sikerül, a gomb ismételt kattintása megoldja
+
+        // animáció és scroll engedélyezése
+        gate.classList.add('gate--closing');
+        setTimeout(()=>{
+          gate.remove();
+          document.body.style.overflow = 'auto';
+          app.focus({preventScroll:true});
+          app.scrollIntoView({behavior:'smooth', block:'start'});
+        }, 580); // szinkronban a gateOut .6s animációval
+      }
+
+      // ENTER gomb
+      enterBtn.addEventListener('click', closeGate);
+
+      // Enter billentyű is működjön
+      document.addEventListener('keydown', (e)=>{
+        if(e.key === 'Enter' && document.body.contains(gate)) {
+          e.preventDefault();
+          closeGate();
+        }
+      });
+    })();
   </script>
 </body>
 </html>
